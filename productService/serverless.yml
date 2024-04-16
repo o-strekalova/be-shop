@@ -1,0 +1,40 @@
+service: productservice
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: dev
+  region: eu-west-1
+
+package:
+  individually: true
+
+plugins:
+  - serverless-auto-swagger
+  - serverless-webpack
+  - serverless-offline
+
+custom:
+  webpack:
+    webpackConfig: "webpack.config.js"
+    includeModules: true
+    packager: "npm"
+    excludeFiles: src/**/*.test.js
+  autoswagger:
+    apiType: http
+    typefiles: []
+    basePath: /${sls:stage}
+
+functions:
+  getProductList:
+    handler: src/handlers/getProductList.default
+    events:
+      - http:
+          path: products
+          method: get
+  getProductById:
+    handler: src/handlers/getProductById.default
+    events:
+      - http:
+          path: products/{productId}
+          method: get
