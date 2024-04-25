@@ -7,23 +7,53 @@ import { transpileSchema } from "@middy/validator/transpile";
 import httpErrorHandler from "@middy/http-error-handler";
 import createError from "http-errors";
 import { CORS_ORIGINS_WHITE_LIST } from "../cors.js";
+import { dynamo } from "../db/dynamoDBClient.js";
 
-export const generateProductNotFoundError = (productId) =>
-  new createError.NotFound(`Product with id '${productId}' is not found`);
+const query = async (id, tableName, idProp) => {
+  const queryResults = await dynamo.query({
+    TableName: tableName,
+    KeyConditionExpression: idProp + ' = :id',
+    ExpressionAttributeValues: {':id': id}
+  }).promise();
 
-export const lambdaHandler = async (event) => {
-  const { productId } = event.pathParameters;
-  const { default: products } = await import("../products.json");
-  const existingProduct = products.find((product) => product.id === productId);
+  return queryResults.Items;
+}
 
-  if (!existingProduct) {
+export const getProductById = async (productId) => {
+  const existingProduct = await query(productId, process.env.productsTable, 'id');
+
+  if (!existingProduct.length) {
     throw generateProductNotFoundError(productId);
   }
+
+  const existingStock = await query(productId, process.env.stocksTable, 'productId');
+
+  if (!existingStock.length) {
+    throw generateStockNotFoundError(productId);
+  }
+
+  return {
+    ...existingProduct[0],
+    count: existingStock[0].count,
+  }
+}
+
+export const generateProductNotFoundError = (productId) =>
+  new createError.NotFound(`Product with id '${productId}' was not found`);
+
+export const generateStockNotFoundError = (productId) =>
+  new createError.NotFound(`Stock for product with id '${productId}' was not found`);
+
+export const lambdaHandler = async (event) => {
+  console.log(`getProductById event - ${event}`);
+
+  const { productId } = event.pathParameters;
+  const product = await getProductById(productId);
 
   return {
     statusCode: 200,
     body: JSON.stringify({
-      product: existingProduct,
+      product,
     }),
   };
 };

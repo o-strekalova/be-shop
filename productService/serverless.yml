@@ -27,14 +27,87 @@ custom:
 
 functions:
   getProductList:
+    role: DynamoDBAccessRole
     handler: src/handlers/getProductList.default
+    environment: 
+      productsTable: products
+      stocksTable: stocks
     events:
       - http:
           path: products
           method: get
   getProductById:
+    role: DynamoDBAccessRole
     handler: src/handlers/getProductById.default
+    environment: 
+      productsTable: products
+      stocksTable: stocks
     events:
       - http:
           path: products/{productId}
           method: get
+  createProduct:
+    role: DynamoDBAccessRole
+    handler: src/handlers/createProduct.default
+    environment: 
+      productsTable: products
+      stocksTable: stocks
+    events:
+      - http:
+          path: products
+          method: post
+          cors: true
+
+resources:
+  Resources:
+    productsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: products
+        TableClass: STANDARD
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    stocksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: stocks
+        TableClass: STANDARD
+        AttributeDefinitions:
+          - AttributeName: productId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: productId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    DynamoDBAccessRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: DynamoDBAccessRole
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: DynamoDBAccess
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:*
+                    - lambda:*
+                  Resource: "*"
