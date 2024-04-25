@@ -1,6 +1,7 @@
 const path = require("path");
 const nodeExternals = require("webpack-node-externals");
 const slsw = require("serverless-webpack");
+const DotenvWebpackPlugin = require("dotenv-webpack");
 
 const isLocal = slsw.lib.webpack.isLocal;
 
@@ -32,4 +33,5 @@ module.exports = {
       },
     ],
   },
+  plugins: [new DotenvWebpackPlugin()],
 };
